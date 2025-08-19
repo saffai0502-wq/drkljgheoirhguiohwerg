@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>🎉 วงล้อสุ่มรางวัล 🎉</title>
+  <style>
+    body {
+      font-family: "Kanit", sans-serif;
+      background: #e4f1e1;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+      color: #2f4f2f;
+    }
+    h1 {
+      margin-bottom: 10px;
+    }
+    input[type="number"] {
+      width: 120px;
+      padding: 6px;
+      font-size: 16px;
+    }
+    button {
+      background-color: #4caf50;
+      border: none;
+      padding: 10px 18px;
+      margin-top: 10px;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 8px;
+    }
+    button:disabled {
+      background-color: #a4c9a2;
+      cursor: not-allowed;
+    }
+    #rights {
+      margin: 10px 0 30px;
+      font-weight: bold;
+    }
+    #wheel {
+      margin: 0 auto;
+      width: 350px;
+      height: 350px;
+      border-radius: 50%;
+      box-shadow: 0 0 15px #999;
+      position: relative;
+      overflow: hidden;
+    }
+    #pointer {
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      margin-left: -15px;
+      width: 0;
+      height: 0;
+      border-left: 15px solid transparent;
+      border-right: 15px solid transparent;
+      border-bottom: 30px solid #d63333;
+      filter: drop-shadow(0 0 3px #9e2626);
+      z-index: 10;
+    }
+    #popup {
+      display: none;
+      position: fixed;
+      z-index: 999;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+    }
+    #popupContent {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+      max-width: 300px;
+      margin: 15% auto;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      animation: fadeIn 0.3s ease;
+    }
+    #popupContent h2 {
+      margin: 0 0 10px;
+      color: #2e7d32;
+    }
+    #popup button {
+      margin-top: 15px;
+      background: #2e7d32;
+      padding: 8px 16px;
+    }
+    @keyframes fadeIn {
+      from {opacity: 0; transform: scale(0.8);}
+      to {opacity: 1; transform: scale(1);}
+    }
+  </style>
+</head>
+<body>
+
+<h1>🎉 วงล้อสุ่มรางวัล 🎉</h1>
+
+<label for="moneyInput">ยอดซื้อ (บาท): </label>
+<input id="moneyInput" type="number" min="0" step="1" value="0" />
+<button id="addRightBtn">เพิ่มสิทธิ์</button>
+
+<div id="rights">สิทธิ์ของคุณ: 0</div>
+
+<div id="wheel">
+  <div id="pointer"></div>
+  <canvas id="canvas" width="350" height="350"></canvas>
+</div>
+
+<button id="spinBtn" disabled>หมุนวงล้อ</button>
+
+<!-- Popup Modal -->
+<div id="popup">
+  <div id="popupContent">
+    <h2>ผลลัพธ์</h2>
+    <p id="popupMessage"></p>
+    <button onclick="closePopup()">ปิด</button>
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+  const spinBtn = document.getElementById("spinBtn");
+  const addRightBtn = document.getElementById("addRightBtn");
+  const moneyInput = document.getElementById("moneyInput");
+  const rightsDisplay = document.getElementById("rights");
+  const popup = document.getElementById("popup");
+  const popupMessage = document.getElementById("popupMessage");
+
+  const prizeTexts = [
+    "⭐ ส่วนลด 5 บาท",
+    "😢 ไม่ได้รางวัล",
+    "⭐ ส่วนลด 10 บาท",
+    "😢 ไม่ได้รางวัล",
+    "😢 ไม่ได้รางวัล",
+    "⭐ ส่วนลด 15 บาท",
+    "😢 ไม่ได้รางวัล",
+    "⭐ ส่วนลด 10 บาท",
+    "😢 ไม่ได้รางวัล",
+    "⭐ ส่วนลด 5 บาท",
+    "😢 ไม่ได้รางวัล",
+    "😢 ไม่ได้รางวัล",
+    "🎁 ALLสลัดฟรี 1 ชุด",
+    "😢 ไม่ได้รางวัล",
+    "⭐ ส่วนลด 10 บาท",
+    "😢 ไม่ได้รางวัล",
+    "😢 ไม่ได้รางวัล",
+    "⭐ ส่วนลด 5 บาท",
+    "😢 ไม่ได้รางวัล",
+    "😢 ไม่ได้รางวัล",
+  ];
+
+  const colors = [
+    "#b7e4c7", "#c0c0c0", "#a3d9a5", "#c0c0c0", "#c0c0c0",
+    "#91c788", "#c0c0c0", "#74b866", "#c0c0c0", "#5ca354",
+    "#c0c0c0", "#c0c0c0", "#e6c12f", "#c0c0c0", "#a3d9a5",
+    "#c0c0c0", "#c0c0c0", "#6ea260", "#c0c0c0", "#c0c0c0"
+  ];
+
+  const segments = prizeTexts.map((text, i) => ({ text, color: colors[i] || "#ccc" }));
+
+  let currentAngle = 0;
+  let spinTimeout = null;
+  let spinAngleStart = 0;
+  let spinTime = 0;
+  let spinTimeTotal = 0;
+  let rights = 0;
+
+  function drawWheel() {
+    const arc = (2 * Math.PI) / segments.length;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    for (let i = 0; i < segments.length; i++) {
+      const angle = currentAngle + i * arc;
+      ctx.fillStyle = segments[i].color;
+      ctx.beginPath();
+      ctx.moveTo(canvas.width / 2, canvas.height / 2);
+      ctx.arc(canvas.width / 2, canvas.height / 2, canvas.width / 2 - 10, angle, angle + arc, false);
+      ctx.lineTo(canvas.width / 2, canvas.height / 2);
+      ctx.fill();
+
+      // เขียนข้อความให้อยู่ในช่อง
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(angle + arc / 2);
+      ctx.fillStyle = "#2f4f2f";
+      ctx.font = "bold 13px Kanit, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(segments[i].text, 0, -(canvas.width / 2 - 80));
+      ctx.restore();
+    }
+  }
+
+  function spin() {
+    if (rights < 1) {
+      alert("คุณไม่มีสิทธิ์หมุนวงล้อ กรุณาเพิ่มสิทธิ์ก่อน");
+      return;
+    }
+    spinAngleStart = Math.random() * 10 + 10;
+    spinTime = 0;
+    spinTimeTotal = Math.random() * 4 + 4;
+    rotateWheel();
+  }
+
+  function rotateWheel() {
+    spinTime += 0.03;
+    if (spinTime >= spinTimeTotal) {
+      stopRotateWheel();
+      return;
+    }
+    const spinAngle = spinAngleStart * (1 - spinTime / spinTimeTotal);
+    currentAngle += (spinAngle * Math.PI) / 180;
+    drawWheel();
+    spinTimeout = requestAnimationFrame(rotateWheel);
+  }
+
+  function stopRotateWheel() {
+    cancelAnimationFrame(spinTimeout);
+    currentAngle = currentAngle % (2 * Math.PI);
+
+    const arc = (2 * Math.PI) / segments.length;
+    const index = Math.floor((2 * Math.PI - currentAngle + arc / 2) / arc) % segments.length;
+    const prize = segments[index].text;
+
+    showPopup(prize);
+
+    rights--;
+    updateRights();
+  }
+
+  function updateRights() {
+    rightsDisplay.textContent = `สิทธิ์ของคุณ: ${rights}`;
+    spinBtn.disabled = rights < 1;
+  }
+
+  function showPopup(message) {
+    popupMessage.textContent = message;
+    popup.style.display = "block";
+  }
+
+  function closePopup() {
+    popup.style.display = "none";
+  }
+
+  addRightBtn.addEventListener("click", () => {
+    let money = parseInt(moneyInput.value);
+    if (isNaN(money) || money <= 0) {
+      alert("กรุณากรอกจำนวนเงินที่ถูกต้อง");
+      return;
+    }
+    let addRights = Math.floor(money / 50); // ✅ 50 บาท = 1 สิทธิ์
+    if(addRights < 1){
+      alert("ยอดซื้อขั้นต่ำ 50 บาทจึงจะได้สิทธิ์");
+      return;
+    }
+    rights += addRights;
+    updateRights();
+    moneyInput.value = 0;
+  });
+
+  spinBtn.addEventListener("click", spin);
+
+  drawWheel();
+</script>
+
+</body>
+</html>
